@@ -8,10 +8,10 @@ import {
   Get,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { Book } from '../database/models/book.entity';
 import { ApiResult } from '../common/classes/api-result';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto } from './dtos/create-category.dto';
+import { Book } from '../database/schemas/book.schema';
 
 @ApiTags('Category')
 @Controller('category')

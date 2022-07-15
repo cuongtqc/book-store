@@ -1,13 +1,17 @@
 import { Module } from '@nestjs/common';
-import { Book } from '../database/models/book.entity';
-import { AppConfig } from '../common/constants/constants';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Category } from '../database/models/category.entity';
 import { CategoryController } from './category.controller';
 import { CategoryService } from './category.service';
+import { MongooseModule } from '@nestjs/mongoose';
+import { Book, BookSchema } from '../database/schemas/book.schema';
+import { Category, CategorySchema } from '../database/schemas/category.schema';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Book, Category], AppConfig.DB)],
+  imports: [
+    MongooseModule.forFeature([
+      { name: Book.name, schema: BookSchema },
+      { name: Category.name, schema: CategorySchema },
+    ]),
+  ],
   controllers: [CategoryController],
   providers: [CategoryService],
   exports: [CategoryService],

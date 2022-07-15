@@ -1,44 +1,71 @@
 import { Injectable } from '@nestjs/common';
-import { Book } from '../database/models/book.entity';
 import { CreateBookDto } from './dtos/create-book.dto';
-import { Category } from '../database/models/category.entity';
-import { AppConfig } from '../common/constants/constants';
-import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, In, Repository } from 'typeorm';
-import { ObjectID } from 'mongodb';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import {
+  Category,
+  CategoryDocument,
+} from '../database/schemas/category.schema';
+import { Book, BookDocument } from '../database/schemas/book.schema';
+import { GetBookByIdDto, GetBookDto } from './dtos/get-book.dto';
+import { StripeService } from '../common/services/stripe.service';
 
 @Injectable()
 export class BookService {
   constructor(
-    @InjectRepository(Book, AppConfig.DB)
-    private readonly bookRepository: Repository<Book>,
-    @InjectRepository(Category, AppConfig.DB)
-    private readonly categoryRepository: Repository<Category>,
-    @InjectEntityManager(AppConfig.DB)
-    private readonly entityManager: EntityManager,
+    @InjectModel(Category.name) private categoryModel: Model<CategoryDocument>,
+    @InjectModel(Book.name) private bookModel: Model<BookDocument>,
+    private stripeService: StripeService,
   ) {}
 
   async createBook(data: CreateBookDto): Promise<Book> {
-    const book = this.bookRepository.create(data);
-    await this.bookRepository.save(book);
-    return book;
+    const book = new this.bookModel(data);
+    const product = await this.stripeService.createProduct(book.name);
+    const price = await this.stripeService.createPrice({
+      unitAmount: book.price || 0,
+      productId: product.id || '',
+    });
+    book.productId = product.id;
+    book.priceId = price.id;
+    return await book.save();
   }
 
-  async getBooks() {
-    const [books, count] = await this.bookRepository.findAndCount();
-    // const categoryIds = books.map((book) => book.categoryId);
-    const categories = await this.categoryRepository.findBy({
-      _id: In([ObjectID('62d0318ad8b6a85a8cf0b42f')]),
+  async getBooks(query: GetBookDto) {
+    const whereCondition = {};
+    if (query.text) {
+      whereCondition['name'] = { $regex: '.*' + query.text + '.*' };
+    }
+
+    const [books, total] = await Promise.all([
+      this.bookModel.find(whereCondition).limit(query.limit).skip(query.offset),
+      this.bookModel.find(whereCondition).count(),
+    ]);
+
+    const categoryIds = books.map((book) => book.categoryId);
+    const categories = await this.categoryModel.find({
+      where: {
+        _id: { $in: categoryIds },
+      },
     });
-    const category = await this.categoryRepository.findOneBy({
-      _id: ObjectID('62d0318ad8b6a85a8cf0b42f'),
-    });
-    console.log('categoryIds', categories);
-    console.log('category', category);
+
     const items = books.map((book) => ({
-      ...book,
+      ...book.toJSON(),
       category: categories.find((_) => _._id.toString() === book.categoryId),
     }));
-    return { items, total: count };
+
+    return { items, total };
+  }
+
+  async getBookById(query: GetBookByIdDto) {
+    const book = await this.bookModel.findOne({ _id: query.id });
+    if (!book) {
+      return null;
+    }
+
+    const category = await this.categoryModel.findOne({ _id: book.categoryId });
+    return {
+      ...book.toJSON(),
+      category: category ? category.toJSON() : null,
+    };
   }
 }

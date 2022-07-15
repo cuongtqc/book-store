@@ -14,6 +14,11 @@ export interface DBConfig {
   url: string;
 }
 
+export interface StripeConfig {
+  pubKey: string;
+  secretKey: string;
+}
+
 export interface RedisConfig {
   host: string;
   port: number;
@@ -29,6 +34,8 @@ export class ConfigService {
     REDIS_PORT: Joi.string(),
 
     DB_URL: Joi.string().required(),
+    STRIPE_SECRET: Joi.string(),
+    STRIPE_PUBLIC: Joi.string(),
   };
 
   constructor(filePath: string) {
@@ -45,6 +52,13 @@ export class ConfigService {
   get db(): DBConfig {
     return {
       url: String(this.envConfig.DB_URL),
+    };
+  }
+
+  get stripe(): StripeConfig {
+    return {
+      pubKey: String(this.envConfig.STRIPE_PUBLIC),
+      secretKey: String(this.envConfig.STRIPE_SECRET),
     };
   }
 

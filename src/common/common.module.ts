@@ -3,6 +3,7 @@ import { APP_FILTER } from '@nestjs/core';
 
 import { HttpExceptionFilter } from './exceptions.filter';
 import { ConfigService } from './services/config.service';
+import { StripeService } from './services/stripe.service';
 
 @Global()
 @Module({
@@ -16,7 +17,14 @@ import { ConfigService } from './services/config.service';
       provide: ConfigService,
       useValue: new ConfigService(`.env`),
     },
+    {
+      provide: StripeService,
+      useFactory: (configService: ConfigService) => {
+        return new StripeService(configService);
+      },
+      inject: [ConfigService],
+    },
   ],
-  exports: [ConfigService],
+  exports: [ConfigService, StripeService],
 })
 export class CommonModule {}
