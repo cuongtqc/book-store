@@ -5,13 +5,14 @@ import {
   UsePipes,
   Request,
   ValidationPipe,
-  Get,
+  Get, Query, Param,
 } from '@nestjs/common';
 import { BookService } from './book.service';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { Book } from '../database/models/book.entity';
 import { ApiResult } from '../common/classes/api-result';
 import { CreateBookDto } from './dtos/create-book.dto';
+import { Book } from '../database/schemas/book.schema';
+import { GetBookByIdDto, GetBookDto } from './dtos/get-book.dto';
 
 @ApiTags('Book')
 @Controller('book')
@@ -29,8 +30,16 @@ export class BookController {
   @Get()
   @UsePipes(new ValidationPipe({ transform: true }))
   @ApiOkResponse({ type: Book })
-  async getBooks() {
-    const response = await this.bookService.getBooks();
+  async getBooks(@Query() query: GetBookDto) {
+    const response = await this.bookService.getBooks(query);
+    return new ApiResult().success(response);
+  }
+
+  @Get(':id')
+  @UsePipes(new ValidationPipe({ transform: true }))
+  @ApiOkResponse({ type: Book })
+  async getBookById(@Param() param: GetBookByIdDto) {
+    const response = await this.bookService.getBookById(param);
     return new ApiResult().success(response);
   }
 }

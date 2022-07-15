@@ -1,28 +1,28 @@
 import { Injectable } from '@nestjs/common';
-import { Book } from '../database/models/book.entity';
 import { CreateCategoryDto } from './dtos/create-category.dto';
-import { Category } from '../database/models/category.entity';
-import { AppConfig } from '../common/constants/constants';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import {
+  Category,
+  CategoryDocument,
+} from '../database/schemas/category.schema';
 
 @Injectable()
 export class CategoryService {
   constructor(
-    @InjectRepository(Book, AppConfig.DB)
-    private readonly bookRepository: Repository<Book>,
-    @InjectRepository(Category, AppConfig.DB)
-    private readonly categoryRepository: Repository<Category>,
+    @InjectModel(Category.name) private categoryModel: Model<CategoryDocument>,
   ) {}
 
   async createCategory(data: CreateCategoryDto): Promise<Category> {
-    const category = this.categoryRepository.create(data);
-    await this.categoryRepository.save(category);
-    return category;
+    const category = new this.categoryModel(data);
+    return await category.save();
   }
 
   async getCategories() {
-    const [categories, count] = await this.categoryRepository.findAndCount();
+    const [categories, count] = await Promise.all([
+      this.categoryModel.find(),
+      this.categoryModel.count(),
+    ]);
     return { items: categories, total: count };
   }
 }
